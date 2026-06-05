@@ -5,11 +5,26 @@ jobs:
   seed:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
       - run: cd backend && npm install
-      - run: cd backend && node src/utils/seed.js
+      - name: Check DB
+        run: |
+          cd backend && node -e "
+          require('dotenv').config();
+          const mongoose = require('mongoose');
+          mongoose.connect(process.env.MONGODB_URI).then(async () => {
+            const Appointment = require('./src/models/Appointment');
+            const Clinic = require('./src/models/Clinic');
+            const clinics = await Clinic.find({});
+            console.log('Clinics:', JSON.stringify(clinics.map(c => ({id: c._id, name: c.name}))));
+            const appointments = await Appointment.find({});
+            console.log('Total Appointments:', appointments.length);
+            if(appointments.length > 0) console.log('Appointment clinicId:', appointments[0].clinicId);
+            mongoose.disconnect();
+          });
+          "
         env:
           MONGODB_URI: mongodb+srv://admin:Admin12345@cluster0.mmnrxrk.mongodb.net/dental_agent?retryWrites=true&w=majority
