@@ -26,3 +26,18 @@ jobs:
           "
         env:
           MONGODB_URI: mongodb+srv://admin:Admin12345@cluster0.mmnrxrk.mongodb.net/dental_agent?retryWrites=true&w=majority
+      - name: Fix admin clinicId
+        run: |
+          cd backend && node -e "
+          const mongoose = require('mongoose');
+          mongoose.connect(process.env.MONGODB_URI).then(async () => {
+            const User = require('./src/models/User');
+            const Clinic = require('./src/models/Clinic');
+            const clinic = await Clinic.findOne({});
+            const result = await User.updateMany({}, { clinicId: clinic._id });
+            console.log('Users updated:', result.modifiedCount);
+            mongoose.disconnect();
+          });
+          "
+        env:
+          MONGODB_URI: mongodb+srv://admin:Admin12345@cluster0.mmnrxrk.mongodb.net/dental_agent?retryWrites=true&w=majority
