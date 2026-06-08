@@ -10,25 +10,17 @@ jobs:
         with:
           node-version: '18'
       - run: cd backend && npm install
-      - name: Check appointments
+      - name: Fix clinic ID
         run: |
           cd backend && node -e "
           const mongoose = require('mongoose');
           mongoose.connect(process.env.MONGODB_URI).then(async () => {
-            const Appointment = require('./src/models/Appointment');
             const Patient = require('./src/models/Patient');
             const Clinic = require('./src/models/Clinic');
-            
-            const clinics = await Clinic.find({});
-            console.log('Clinic IDs:', clinics.map(c => c._id.toString()));
-            
-            const patients = await Patient.find({});
-            console.log('Patients:', patients.length);
-            console.log('Patient clinicIds:', patients.map(p => p.clinicId?.toString()));
-            
-            const appointments = await Appointment.find({});
-            console.log('Total Appointments:', appointments.length);
-            
+            const clinic = await Clinic.findOne({});
+            console.log('Clinic ID:', clinic._id.toString());
+            const result = await Patient.updateMany({}, { clinicId: clinic._id });
+            console.log('Patients updated:', result.modifiedCount);
             mongoose.disconnect();
           });
           "
