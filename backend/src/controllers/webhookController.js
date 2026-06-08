@@ -191,8 +191,74 @@ const processIncomingMessage = async (message, contacts, metadata) => {
     }
 
     // Process with AI Agent
-    const aiResponse = await aiAgentService.processMessage(userMessageText, patient, clinic);
+// Process with AI Agent
+const aiResponse = await aiAgentService.processMessage(userMessageText, patient, clinic);
 
+// Check if AI confirmed an appointment booking
+const lowerResponse = aiResponse.toLowerCase();
+if (
+  (lowerResponse.includes('confirmed') || lowerResponse.includes('booked')) &&
+  lowerResponse.includes('appointment') &&
+  lowerResponse.includes('confirmation code')
+) {
+  try {
+    // Extract details from conversation
+    const Dentist = require('../models/Dentist');
+    const dentist = await Dentist.findOne({ clinicId: clinic._id, isActive: true });
+    
+    if (dentist) {
+      // Get date from AI response
+      const dateMatch = aiResponse.match(/(\d{1,2}\s+\w+\s+\d{4}|\w+\s+\d{1,2},?\s+\d{4})/i);
+      const timeMatch = aiResponse.match(/(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))/i);
+      
+      if (dateMatch && timeMatch) {
+        const appointmentDate = new Date(dateMatch[0]);
+        let timeStr = timeMatch[0].trim();
+        
+        // Convert to 24hr format
+        const [time, period] = timeStr.split(/\s+/);
+        const [hours, minutes] = time.split(':');
+        let hour24 = parseInt(hours);
+        if (period?.toLowerCase() === 'pm' && hour24 !== 12) hour24 += 12;
+        if (period?.toLowerCase() === 'am' && hour24 === 12) hour24 = 0;
+        const startTime = `${String(hour24).padStart(2, '0')}:${minutes}`;
+
+        // Get service from conversation
+        const services = clinic.services?.map(s => s.name) || ['General Checkup'];
+        let service = services[0];
+        for (const s of services) {
+          if (aiResponse.toLowerCase().includes(s.toLowerCase())) {
+            service = s;
+            break;
+          }
+        }
+
+        const Appointment = require('../models/Appointment');
+        const existing = await Appointment.findOne({
+          patientId: patient._id,
+          appointmentDate: appointmentDate,
+          startTime: startTime,
+          status: { $in: ['confirmed', 'pending'] }
+        });
+
+        if (!existing && !isNaN(appointmentDate.getTime())) {
+          await appointmentService.createAppointment({
+            clinicId: clinic._id,
+            dentistId: dentist._id,
+            patientId: patient._id,
+            appointmentDate: appointmentDate,
+            startTime: startTime,
+            service: service,
+            bookedVia: 'whatsapp',
+          });
+          logger.info(`Appointment saved to DB for ${from}`);
+        }
+      }
+    }
+  } catch (bookingError) {
+    logger.error('Auto-save appointment error:', bookingError.message);
+  }
+}
     // Add AI response to conversation history
     patient.addToConversation('assistant', aiResponse);
     await patient.save();
