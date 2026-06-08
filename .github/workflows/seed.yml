@@ -10,19 +10,25 @@ jobs:
         with:
           node-version: '18'
       - run: cd backend && npm install
-      - name: Check DB
+      - name: Check appointments
         run: |
           cd backend && node -e "
-          require('dotenv').config();
           const mongoose = require('mongoose');
           mongoose.connect(process.env.MONGODB_URI).then(async () => {
             const Appointment = require('./src/models/Appointment');
+            const Patient = require('./src/models/Patient');
             const Clinic = require('./src/models/Clinic');
+            
             const clinics = await Clinic.find({});
-            console.log('Clinics:', JSON.stringify(clinics.map(c => ({id: c._id, name: c.name}))));
+            console.log('Clinic IDs:', clinics.map(c => c._id.toString()));
+            
+            const patients = await Patient.find({});
+            console.log('Patients:', patients.length);
+            console.log('Patient clinicIds:', patients.map(p => p.clinicId?.toString()));
+            
             const appointments = await Appointment.find({});
             console.log('Total Appointments:', appointments.length);
-            if(appointments.length > 0) console.log('Appointment clinicId:', appointments[0].clinicId);
+            
             mongoose.disconnect();
           });
           "
