@@ -25,7 +25,7 @@ jobs:
           });
           "
         env:
-          MONGODB_URI: mongodb+srv://admin:Admin12345@cluster0.mmnrxrk.mongodb.net/dental_agent?retryWrites=true&w=majority
+          MONGODB_URI: your_mongodb_connection_string
       - name: Fix admin clinicId
         run: |
           cd backend && node -e "
@@ -40,4 +40,4 @@ jobs:
           });
           "
         env:
-          MONGODB_URI: mongodb+srv://admin:Admin12345@cluster0.mmnrxrk.mongodb.net/dental_agent?retryWrites=true&w=majority
+          MONGODB_URI: your_mongodb_connection_string
